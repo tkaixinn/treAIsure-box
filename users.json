@@ -1,0 +1,12 @@
+{
+    "users": {
+        "test": {
+            "name": "test",
+            "password": "$2b$12$q5P7f9x5TsYf1IiHDbL5deOyOUWddbJhjKe2Iv/vI525vfJFkn59y",
+            "skills": [],
+            "interests": [],
+            "startup_type": "Tech",
+            "resources": "Solo"
+        }
+    }
+}
