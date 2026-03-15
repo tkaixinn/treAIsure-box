@@ -45,6 +45,7 @@ Startup Type: {startup_type}
 Resources: {resources}
 
 Format: Each idea as a short title and 1-sentence description.
+Do NOT number the ideas
 """
 
 def generate_startup_ideas(skills, interests, startup_type, resources):

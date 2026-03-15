@@ -1,15 +1,11 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import json
-from utils import generate_startup_ideas
+from utils.ai import generate_startup_ideas
+from utils.users import load_users, save_users, save_idea, delete_idea, edit_idea_notes
 from pathlib import Path
 from streamlit_tags import st_tags
 
-
-USER_FILE = Path("users.json")
-
-with open(USER_FILE, "r") as f:
-    users_data = json.load(f)
+users_data = load_users()
 
 user_dict = {
     "usernames": {
@@ -33,9 +29,21 @@ if "authentication_status" in st.session_state and st.session_state["authenticat
     name = st.session_state["name"]
     st.success(f"Welcome {name}!")
 
+    if "idea_saved" in st.session_state:
+        st.toast("Idea saved!")
+        del st.session_state["idea_saved"]
+
+    if "notes_saved" in st.session_state:
+        st.toast("💾 Notes saved!")
+        del st.session_state["notes_saved"]
+
+    if "idea_deleted" in st.session_state:
+        st.toast("🗑 Idea deleted!")
+        del st.session_state["idea_deleted"]
+
     profile = users_data["users"][username]
 
-    tab_ideas, tab_profile = st.tabs(["Startup Ideas", "Profile"])
+    tab_ideas, tab_profile, tab_my_ideas = st.tabs(["Startup Ideas", "Profile", "My Ideas"])
 
     with tab_profile:
         st.subheader("Update Your Profile")
@@ -90,8 +98,7 @@ if "authentication_status" in st.session_state and st.session_state["authenticat
             users_data["users"][username]["interests"] = interests
             users_data["users"][username]["startup_type"] = startup_type
             users_data["users"][username]["resources"] = resources
-            with open(USER_FILE, "w") as f:
-                json.dump(users_data, f, indent=4)
+            save_users(users_data)
             st.success("Profile updated!")
 
 
@@ -102,22 +109,77 @@ if "authentication_status" in st.session_state and st.session_state["authenticat
         resources = profile.get("resources", "Solo")
 
         if st.button("Generate Startup Ideas"):
-  
-            users_data["users"][username]["skills"] = skills
-            users_data["users"][username]["interests"] = interests
-            users_data["users"][username]["startup_type"] = startup_type
-            users_data["users"][username]["resources"] = resources
-            with open(USER_FILE, "w") as f:
-                json.dump(users_data, f, indent=4)
 
-            ideas = generate_startup_ideas(
-                        ", ".join(skills),
-                        ", ".join(interests),
-                        startup_type,
-                        resources
+            ideas_raw = generate_startup_ideas(
+                ", ".join(skills),
+                ", ".join(interests),
+                startup_type,
+                resources
             )
-            st.text_area("Your AI-generated startup ideas", ideas, height=400)
 
+            # split the AI text into individual ideas
+            ideas_list = [i.strip() for i in ideas_raw.split("\n") if i.strip()]
+
+            st.session_state["generated_ideas"] = ideas_list
+
+
+        if "generated_ideas" in st.session_state:
+
+            for i, idea in enumerate(st.session_state["generated_ideas"]):
+
+                with st.container():
+
+                    col1, col2 = st.columns([8,1])
+
+                    with col1:
+                        st.markdown(f"### 💡 Idea {i+1}")
+                        st.info(idea)
+
+                    with col2:
+                        if st.button("💾", key=f"save_generated_{i}"):
+                            save_idea(username, {
+                                "description": idea,
+                                "notes": ""
+                            })
+                            st.session_state["idea_saved"] = True
+                            st.rerun()
+
+                st.divider()
+
+    with tab_my_ideas:
+        saved_ideas = users_data["users"][username].get("saved_ideas", [])
+
+        if not saved_ideas:
+                st.info("You haven't saved any ideas yet.")
+
+        else:
+            for i, idea in enumerate(saved_ideas):
+                with st.container():
+                    st.markdown(f"### 💡 Idea {i + 1}")
+                    st.info(idea['description'])
+
+                    with st.expander("📝 Show Notes / Actions", expanded=False):
+                        notes = st.text_area(
+                            f"Notes for Idea {i + 1}",
+                            value=idea.get("notes", ""),
+                            key=f"notes_{i}"
+                        )
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            if st.button("💾 Save Notes", key=f"save_notes_{i}"):
+                                edit_idea_notes(username, i, notes)
+                                st.session_state["notes_saved"] = True
+                                st.rerun()
+
+                        with col2:
+                            if st.button("🗑 Delete Idea", key=f"delete_{i}"):
+                                delete_idea(username, i)
+                                st.session_state["idea_deleted"] = True
+                                st.rerun()
+
+                        st.divider()
 
     authenticator.logout("Logout", "main")
 
@@ -199,6 +261,5 @@ else:
                     "startup_type": startup_type,
                     "resources": resources
                 }
-                with open(USER_FILE, "w") as f:
-                    json.dump(users_data, f, indent=4)
+                save_users(users_data)
                 st.success("Account created! You can now login.")
