@@ -52,3 +52,19 @@ def generate_startup_ideas(skills, interests, startup_type, resources):
     """High-level function your Streamlit app will call"""
     prompt = create_startup_prompt(skills, interests, startup_type, resources)
     return call_ai(prompt)
+
+def create_refine_prompt(idea_description, notes):
+    return f"""
+You are an AI startup mentor. Refine the following idea with the user's notes.
+Idea: {idea_description}
+User Notes: {notes}
+
+Provide a professional, concise refined idea including:
+- Improved description
+- 3 actionable next steps
+- Suggestions for skills or resources needed
+"""
+    
+def refine_startup_idea(idea_description, notes):
+    prompt = create_refine_prompt(idea_description, notes)
+    return call_ai(prompt)

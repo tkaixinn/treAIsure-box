@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-from utils.ai import generate_startup_ideas
+from utils.ai import generate_startup_ideas, refine_startup_idea
 from utils.users import load_users, save_users, save_idea, delete_idea, edit_idea_notes
 from pathlib import Path
 from streamlit_tags import st_tags
@@ -40,6 +40,10 @@ if "authentication_status" in st.session_state and st.session_state["authenticat
     if "idea_deleted" in st.session_state:
         st.toast("🗑 Idea deleted!")
         del st.session_state["idea_deleted"]
+
+    if "refined_notes" in st.session_state:
+        st.toast("### ✨ Refined Idea")
+        del st.session_state["refined_notes"]
 
     profile = users_data["users"][username]
 
@@ -178,6 +182,24 @@ if "authentication_status" in st.session_state and st.session_state["authenticat
                                 delete_idea(username, i)
                                 st.session_state["idea_deleted"] = True
                                 st.rerun()
+
+                            if st.button("💡 Refine Idea", key=f"refine_{i}"):
+                                refined_idea = refine_startup_idea(idea['description'], notes)
+                                st.session_state[f"refined_{i}"] = refined_idea
+                                st.session_state["refined_toast"] = True  
+                                st.rerun()
+
+          
+                            if f"refined_{i}" in st.session_state:
+                                if st.button("💾 Save Refined Idea", key=f"save_refined_{i}"):
+                                    users_data["users"][username]["saved_ideas"][i]["description"] = st.session_state[f"refined_{i}"]
+                                    save_users(users_data)
+                                    st.session_state["idea_saved"] = True
+                                    st.rerun()
+
+                        if f"refined_{i}" in st.session_state:
+                            st.markdown("### ✨ Refined Idea")
+                            st.info(st.session_state[f"refined_{i}"])
 
                         st.divider()
 
